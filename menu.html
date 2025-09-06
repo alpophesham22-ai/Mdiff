@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>القائمة - إدارة اشتراكات المطعم</title>
+
+<!-- ربط ملف manifest لتطبيق PWA -->
+<link rel="manifest" href="manifest.json">
+
+<!-- تسجيل Service Worker للأوفلاين -->
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .then(() => console.log('Service Worker مسجل بنجاح'))
+    .catch(() => console.log('فشل تسجيل Service Worker'));
+}
+</script>
+
+<style>
+body { font-family: system-ui, sans-serif; margin: 18px; }
+button { font-size: 16px; padding: 12px; margin: 6px 0; width: 100%; }
+h1 { margin-bottom: 12px; }
+</style>
+</head>
+<body>
+  <h1>📋 القائمة الرئيسية</h1>
+  <button onclick="location.href='add.html'">➕ إضافة عميل</button>
+  <button onclick="location.href='search.html'">🔎 بحث وتعديل / حذف</button>
+  <button onclick="location.href='consume.html'">🍽️ تسجيل استهلاك وجبة</button>
+  <button onclick="location.href='import.html'">⬆️ استيراد / ⬇️ تصدير بيانات</button>
+  <p style="color:#666; margin-top: 20px;">
+    افتح هذا الملف في متصفح Chrome. بعد التشغيل الأول، يمكن إضافته للشاشة الرئيسية لتشغيله كتطبيق مستقل.
+  </p>
+</body>
+</html>
