@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>إدارة المشتركين</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: Tahoma, sans-serif; direction: rtl; margin: 20px; }
+    .box { border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; }
+    #customerPage { display:none; border:2px solid #333; padding:15px; }
+    button { padding:8px 12px; margin:5px; }
+  </style>
+</head>
+<body>
+
+  <h2>إضافة مشترك جديد</h2>
+  <div class="box">
+    <input id="name" placeholder="اسم المشترك">
+    <input id="phone" placeholder="رقم الجوال">
+    <input id="meals" type="number" placeholder="عدد الوجبات">
+    <button onclick="addCustomer()">إضافة</button>
+  </div>
+
+  <h2>توليد باركود</h2>
+  <div id="customers"></div>
+
+  <h2>مسح الكود</h2>
+  <div class="box">
+    <div id="reader" style="width:300px"></div>
+  </div>
+
+  <!-- صفحة العميل بعد قراءة الكود -->
+  <div id="customerPage">
+    <h3>بيانات المشترك</h3>
+    <p id="custName"></p>
+    <p id="custPhone"></p>
+    <p id="custMeals"></p>
+    <button onclick="consumeMeal()">خصم وجبة</button>
+    <button onclick="backToMain()">رجوع</button>
+  </div>
+
+<script>
+  // قاعدة بيانات محلية (localStorage)
+  let customers = JSON.parse(localStorage.getItem("customers") || "[]");
+  let currentCustomer = null;
+
+  function save() {
+    localStorage.setItem("customers", JSON.stringify(customers));
+    render();
+  }
+
+  // إضافة مشترك جديد
+  function addCustomer() {
+    let name = document.getElementById("name").value;
+    let phone = document.getElementById("phone").value;
+    let meals = parseInt(document.getElementById("meals").value);
+    if (!name || !phone || !meals) return alert("أدخل البيانات كاملة");
+
+    if (customers.some(c => c.id === phone)) return alert("رقم الجوال مسجل بالفعل");
+
+    customers.push({id: phone, name, meals});
+    save();
+  }
+
+  // عرض المشتركين + QR
+  function render() {
+    let div = document.getElementById("customers");
+    div.innerHTML = "";
+    customers.forEach(c => {
+      let box = document.createElement("div");
+      box.className = "box";
+      box.innerHTML = `<b>${c.name}</b> | جوال: ${c.id} | وجبات: ${c.meals}`;
+      let qr = document.createElement("div");
+      qr.id = "qr" + c.id;
+      box.appendChild(qr);
+      div.appendChild(box);
+      new QRCode(qr, {text: c.id, width: 100, height:100});
+    });
+  }
+
+  // فتح صفحة العميل بعد المسح
+  function openCustomerPage(c) {
+    currentCustomer = c;
+    document.getElementById("custName").innerText = "الاسم: " + c.name;
+    document.getElementById("custPhone").innerText = "الجوال: " + c.id;
+    document.getElementById("custMeals").innerText = "الوجبات المتبقية: " + c.meals;
+    document.getElementById("customerPage").style.display = "block";
+  }
+
+  // خصم وجبة
+  function consumeMeal() {
+    if (!currentCustomer) return;
+    if (currentCustomer.meals > 0) {
+      currentCustomer.meals -= 1;
+      alert("✅ تم خصم وجبة، المتبقي: " + currentCustomer.meals);
+    } else {
+      alert("❌ الاشتراك منتهي");
+    }
+    save();
+    openCustomerPage(currentCustomer); // تحديث البيانات
+  }
+
+  // رجوع للصفحة الرئيسية
+  function backToMain() {
+    document.getElementById("customerPage").style.display = "none";
+    currentCustomer = null;
+  }
+
+  // عند قراءة الكود
+  function onScanSuccess(decodedText) {
+    let c = customers.find(x => x.id === decodedText);
+    if (c) {
+      openCustomerPage(c);
+    } else {
+      alert("العميل غير موجود");
+    }
+  }
+
+  let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+  scanner.render(onScanSuccess);
+
+  render();
+</script>
+</body>
+</html>
