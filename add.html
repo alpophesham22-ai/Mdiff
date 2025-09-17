@@ -1,68 +1,8 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>إضافة عميل</title>
-<style>
-body { font-family: system-ui, sans-serif; margin: 16px; }
-label { display: block; margin-top: 8px; }
-input, button, select { font-size: 16px; padding: 8px; width: 100%; box-sizing: border-box; }
-button { margin-top: 12px; }
-#msg { color: green; margin-top: 10px; }
-</style>
-</head>
-<body>
-  <h1>➕ إضافة عميل</h1>
-
-  <label>ID (أدخل بنفسك)</label><input id="id">
-  <label>الاسم</label><input id="name">
-  <label>الجوال</label><input id="phone" placeholder="05XXXXXXXX">
-  <label>اسم الاشتراك (خانة حرة)</label><input id="subName">
-  <label>مدة الاشتراك</label>
-  <select id="duration"><option value="14">14 يوم</option><option value="40" selected>40 يوم</option></select>
-  <label>تاريخ البداية</label><input id="start" type="date">
-  <label>إجمالي الوجبات المسموحة</label><input id="totalAllowed" type="number" min="0" placeholder="مثال: 30">
-
-  <div style="display:grid;grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
-    <div><label>عدد وجبات دجاج</label><input id="chicken" type="number" min="0" value="0"></div>
-    <div><label>عدد وجبات لحم</label><input id="meat" type="number" min="0" value="0"></div>
-    <div><label>عدد وجبات سمك</label><input id="fish" type="number" min="0" value="0"></div>
-    <div><label>عدد وجبات سناك</label><input id="snack" type="number" min="0" value="0"></div>
-  </div>
-
-  <button id="save">حفظ العميل</button>
-  <p id="msg"></p>
-  <hr>
-  <button onclick="location.href='menu.html'">⬅ القائمة الرئيسية</button>
-
 <script>
-const DB='subsDB_final', STORE='subs';
 const DAY_MS=24*60*60*1000;
 
-function openDB() {
-  return new Promise((res, rej) => {
-    const r = indexedDB.open(DB,1);
-    r.onupgradeneeded = e => { e.target.result.createObjectStore(STORE, {keyPath:'id'}); };
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => rej(r.error);
-  });
-}
-
-function put(sub) {
-  return new Promise((res, rej) => {
-    const tx = db.transaction(STORE,'readwrite');
-    tx.objectStore(STORE).put(sub);
-    tx.oncomplete = () => res();
-    tx.onerror = () => rej(tx.error);
-  });
-}
-
-let db;
-openDB().then(d => { db = d; 
-  let today = new Date().toISOString().slice(0,10); 
-  document.getElementById('start').value = today;
-});
+// حط هنا رابط الـ Web App URL اللي هتحصل عليه من Apps Script
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbwKJsqmI-dlA5eYiXnFV9e8Ch6zJPL8MNaM857ciAqenqnQQ7S1c-jM8bx39nTZGxm2CA/exec";
 
 document.getElementById('save').addEventListener('click', async () => {
   const id = document.getElementById('id').value.trim();
@@ -91,10 +31,17 @@ document.getElementById('save').addEventListener('click', async () => {
     createdAt:new Date().toISOString()
   };
 
-  await put(sub);
-  document.getElementById('msg').textContent = 'تم حفظ العميل.';
-  setTimeout(()=>location.href='menu.html',700);
+  try {
+    const response = await fetch(SHEETS_URL, {
+      method: "POST",
+      body: JSON.stringify(sub)
+    });
+    const text = await response.text();
+    document.getElementById('msg').textContent = text || 'تم حفظ العميل في الشيت.';
+    setTimeout(()=>location.href='menu.html',700);
+  } catch(err) {
+    console.error(err);
+    alert('حدث خطأ أثناء إرسال البيانات.');
+  }
 });
 </script>
-</body>
-</html>
