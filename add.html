@@ -1,7 +1,7 @@
 <script>
-const DAY_MS=24*60*60*1000;
+const DAY_MS = 24*60*60*1000;
 
-// حط هنا رابط الـ Web App URL اللي هتحصل عليه من Apps Script
+// ضع هنا رابط Web App الخاص بك
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbwKJsqmI-dlA5eYiXnFV9e8Ch6zJPL8MNaM857ciAqenqnQQ7S1c-jM8bx39nTZGxm2CA/exec";
 
 document.getElementById('save').addEventListener('click', async () => {
@@ -17,18 +17,21 @@ document.getElementById('save').addEventListener('click', async () => {
   const fish = parseInt(document.getElementById('fish').value)||0;
   const snack = parseInt(document.getElementById('snack').value)||0;
 
-  if(!id||!name||!phone||!start){ alert('املأ الحقول الأساسية'); return; }
+  if(!id || !name || !phone || !start) {
+    alert('املأ الحقول الأساسية');
+    return;
+  }
 
   const sumTypes = chicken + meat + fish + snack;
   const totalAllowed = (!isNaN(totalAllowedInput) && totalAllowedInput>0) ? totalAllowedInput : sumTypes;
 
   const sub = {
-    id, name, phone, subName, duration, startDate:start,
+    id, name, phone, subName, duration, startDate: start,
     endDate: new Date(new Date(start).getTime() + duration*DAY_MS).toISOString().slice(0,10),
     totalAllowed,
-    consumed:{دجاج:0,لحم:0,سمك:0,سناك:0},
-    remaining:{دجاج:chicken,لحم:meat,سمك:fish,سناك:snack},
-    createdAt:new Date().toISOString()
+    consumed: {دجاج:0, لحم:0, سمك:0, سناك:0},
+    remaining: {دجاج:chicken, لحم:meat, سمك:fish, سناك:snack},
+    createdAt: new Date().toISOString()
   };
 
   try {
@@ -36,13 +39,14 @@ document.getElementById('save').addEventListener('click', async () => {
       method: "POST",
       body: JSON.stringify(sub)
     });
+
     const text = await response.text();
-    document.getElementById('msg').textContent = text || 'تم حفظ العميل في الشيت.';
-    setTimeout(()=>location.href='menu.html',700);
+    document.getElementById('msg').textContent = text || 'تم حفظ العميل في الشيت MD.';
+
+    setTimeout(()=>location.href='menu.html', 700);
   } catch(err) {
     console.error(err);
     alert('حدث خطأ أثناء إرسال البيانات.');
   }
 });
 </script>
-
