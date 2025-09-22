@@ -43,6 +43,7 @@ th { background:#eee; }
 <th>لحم</th>
 <th>سمك</th>
 <th>سناك</th>
+<th>تعديل</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -135,13 +136,16 @@ function importCSV() {
   reader.readAsText(fileInput.files[0]);
 }
 
-// عرض العملاء
+// عرض العملاء مع زر تعديل
 function loadFromDB() {
   getAllClients().then(clients => {
     const tbody = document.querySelector("#customersTable tbody");
     tbody.innerHTML = "";
+
     clients.forEach(c => {
       const tr = document.createElement("tr");
+
+      // بيانات العميل
       [
         c.id, c.name, c.phone, c.subName, c.duration, c.startDate, c.endDate, c.totalAllowed,
         c.remaining.دجاج, c.remaining.لحم, c.remaining.سمك, c.remaining.سناك
@@ -150,6 +154,31 @@ function loadFromDB() {
         td.textContent = val;
         tr.appendChild(td);
       });
+
+      // زر تعديل
+      const editTd = document.createElement("td");
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "✏️ تعديل";
+      editBtn.style.cursor = "pointer";
+      editBtn.onclick = async () => {
+        const newName = prompt("الاسم:", c.name) || c.name;
+        const newPhone = prompt("الجوال:", c.phone) || c.phone;
+        const newSub = prompt("نوع الاشتراك:", c.subName) || c.subName;
+        const newDur = parseInt(prompt("المدة:", c.duration)) || c.duration;
+
+        // تحديث البيانات
+        c.name = newName;
+        c.phone = newPhone;
+        c.subName = newSub;
+        c.duration = newDur;
+        c.endDate = new Date(new Date(c.startDate).getTime() + newDur*24*60*60*1000).toISOString().slice(0,10);
+
+        await saveClient(c); // تحديث في IndexedDB
+        loadFromDB(); // إعادة تحميل الجدول
+      };
+      editTd.appendChild(editBtn);
+      tr.appendChild(editTd);
+
       tbody.appendChild(tr);
     });
   });
@@ -180,3 +209,11 @@ loadFromDB();
 </script>
 </body>
 </html>
+
+
+// عرض تلقائي عند فتح الصفحة
+loadFromDB();
+</script>
+</body>
+</html>
+
