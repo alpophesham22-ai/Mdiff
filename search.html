@@ -3,31 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>بحث وتعديل العملاء</title>
+<title>🔎 بحث وتعديل العملاء</title>
 <style>
-body { font-family: sans-serif; margin: 16px; }
+body { font-family: sans-serif; margin:16px; }
 label { display:block; margin-top:8px; }
 input, button { font-size:16px; padding:8px; width:100%; box-sizing:border-box; }
 button { margin-top:12px; }
 #result { margin-top:12px; background:#f0f0f0; padding:10px; border-radius:6px; }
+#msg { font-weight:bold; color:green; margin-top:8px; }
 </style>
 </head>
 <body>
 
 <h1>🔎 بحث وتعديل العملاء</h1>
 
-<label>ابحث بالـ ID</label>
-<input id="query" placeholder="ادخل ID">
+<label>ابحث بالـ ID أو الاسم</label>
+<input id="query" placeholder="ادخل ID أو الاسم">
 <button id="searchBtn">بحث</button>
 
-<div id="result"></div>
+<div id="result">نتيجة البحث ستظهر هنا</div>
 <hr>
-<button onclick="location.href='menu.html'">⬅ القائمة الرئيسية</button>
+<button onclick="location.href='import.html'">⬅ القائمة الرئيسية</button>
 
 <script>
-const DB='subsDB_final', STORE='subs';
+const DB='ClientsDB', STORE='clients';
 const DAY_MS=24*60*60*1000;
 
+// فتح DB
 function openDB() {
   return new Promise((res, rej)=>{
     const r = indexedDB.open(DB,1);
@@ -37,16 +39,18 @@ function openDB() {
   });
 }
 
-function getClientById(id) {
+// جلب جميع العملاء
+function getAllSubs() {
   return openDB().then(db => new Promise((res, rej)=>{
     const tx = db.transaction(STORE,'readonly');
     const store = tx.objectStore(STORE);
-    const req = store.get(id);
+    const req = store.getAll();
     req.onsuccess = ()=>res(req.result);
     req.onerror = ()=>rej(req.error);
   }));
 }
 
+// حفظ العميل
 function saveClient(client) {
   return openDB().then(db => new Promise((res, rej)=>{
     const tx = db.transaction(STORE,'readwrite');
@@ -60,31 +64,37 @@ function checkStatus(sub){
   const today = new Date();
   const endDate = new Date(sub.endDate);
   let reason='';
-  if(today>endDate) reason='انتهى الاشتراك بسبب مرور الأيام';
-  else if(Object.values(sub.remaining).reduce((a,b)=>a+b,0)<=0) reason='انتهى الاشتراك بسبب نفاد الوجبات';
+  if(today > endDate) reason='انتهى الاشتراك بسبب مرور الأيام';
+  else {
+    const remainingMeals = Object.values(sub.remaining).reduce((a,b)=>a+b,0);
+    if(remainingMeals <= 0) reason='انتهى الاشتراك بسبب نفاد الوجبات';
+  }
   return reason || 'ساري';
 }
 
-document.getElementById('searchBtn').addEventListener('click', async ()=>{
-  const id = document.getElementById('query').value.trim();
-  const resultDiv = document.getElementById('result');
-  resultDiv.innerHTML='';
-  if(!id){ alert('ادخل ID'); return; }
+document.getElementById('searchBtn').addEventListener('click', async () => {
+  const q = document.getElementById('query').value.trim().toLowerCase();
+  const resultsDiv = document.getElementById('result');
+  resultsDiv.innerHTML='';
+  if(!q){ alert('ادخل ID أو الاسم'); return; }
 
-  const client = await getClientById(id);
-  if(!client){ resultDiv.innerHTML='<p>لم يتم العثور على العميل.</p>'; return; }
+  const subs = await getAllSubs();
+  const client = subs.find(s=>s.id.toLowerCase()===q || s.name.toLowerCase()===q);
 
-  resultDiv.innerHTML = `
+  if(!client){ resultsDiv.innerHTML='<p>لم يتم العثور على العميل.</p>'; return; }
+
+  // نموذج قابل للتعديل
+  resultsDiv.innerHTML = `
     <label>الاسم</label>
     <input id="name" value="${client.name}">
     <label>الجوال</label>
     <input id="phone" value="${client.phone}">
-    <label>اسم الاشتراك</label>
+    <label>نوع الاشتراك</label>
     <input id="subName" value="${client.subName}">
-    <label>المدة بالأيام</label>
-    <input id="duration" type="number" value="${client.duration}">
     <label>تاريخ البداية</label>
     <input id="startDate" type="date" value="${client.startDate}">
+    <label>المدة</label>
+    <input id="duration" type="number" value="${client.duration}">
     <label>دجاج متبقي</label>
     <input id="chicken" type="number" value="${client.remaining.دجاج}">
     <label>لحم متبقي</label>
@@ -93,16 +103,16 @@ document.getElementById('searchBtn').addEventListener('click', async ()=>{
     <input id="fish" type="number" value="${client.remaining.سمك}">
     <label>سناك متبقي</label>
     <input id="snack" type="number" value="${client.remaining.سناك}">
-    <p><strong>الحالة الحالية:</strong> ${checkStatus(client)}</p>
     <button id="saveBtn">💾 حفظ التعديلات</button>
+    <p id="msg"></p>
   `;
 
   document.getElementById('saveBtn').onclick = async ()=>{
     client.name = document.getElementById('name').value.trim();
     client.phone = document.getElementById('phone').value.trim();
     client.subName = document.getElementById('subName').value.trim();
-    client.duration = parseInt(document.getElementById('duration').value)||client.duration;
-    client.startDate = document.getElementById('startDate').value || client.startDate;
+    client.startDate = document.getElementById('startDate').value;
+    client.duration = parseInt(document.getElementById('duration').value) || client.duration;
     client.endDate = new Date(new Date(client.startDate).getTime() + client.duration*DAY_MS)
                       .toISOString().slice(0,10);
     client.remaining.دجاج = parseInt(document.getElementById('chicken').value)||0;
@@ -111,8 +121,7 @@ document.getElementById('searchBtn').addEventListener('click', async ()=>{
     client.remaining.سناك = parseInt(document.getElementById('snack').value)||0;
 
     await saveClient(client);
-    alert('✅ تم حفظ التعديلات بنجاح');
-    document.getElementById('searchBtn').click(); // إعادة عرض البيانات
+    document.getElementById('msg').textContent='✅ تم حفظ التعديلات بنجاح';
   };
 });
 </script>
