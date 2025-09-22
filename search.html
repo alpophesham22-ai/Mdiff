@@ -27,6 +27,7 @@ button { margin-top: 12px; }
 const DB='subsDB_final', STORE='subs';
 const DAY_MS=24*60*60*1000;
 
+// فتح IndexedDB
 function openDB() {
   return new Promise((res, rej) => {
     const r = indexedDB.open(DB,1);
@@ -36,6 +37,7 @@ function openDB() {
   });
 }
 
+// جلب جميع العملاء
 function getAllSubs() {
   return new Promise(async (res, rej) => {
     const db = await openDB();
@@ -47,6 +49,18 @@ function getAllSubs() {
   });
 }
 
+// حفظ العميل
+function saveSub(sub) {
+  return new Promise(async (res, rej) => {
+    const db = await openDB();
+    const tx = db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).put(sub);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
+// فحص حالة الاشتراك
 function checkStatus(sub){
   const today = new Date();
   const endDate = new Date(sub.endDate);
@@ -59,6 +73,7 @@ function checkStatus(sub){
   return reason || 'ساري';
 }
 
+// البحث وعرض العميل
 document.getElementById('searchBtn').addEventListener('click', async () => {
   const q = document.getElementById('query').value.trim().toLowerCase();
   const resultsDiv = document.getElementById('result');
@@ -71,19 +86,45 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
   if(matches.length===0){ resultsDiv.innerHTML='<p>لم يتم العثور على العميل.</p>'; return; }
 
   matches.forEach(sub=>{
-    const status = checkStatus(sub);
-    resultsDiv.innerHTML += `
-      <p><strong>ID:</strong> ${sub.id}<br>
-      <strong>الاسم:</strong> ${sub.name}<br>
-      <strong>الجوال:</strong> ${sub.phone}<br>
-      <strong>اسم الاشتراك:</strong> ${sub.subName}<br>
-      <strong>تاريخ البداية:</strong> ${sub.startDate}<br>
-      <strong>تاريخ الانتهاء:</strong> ${sub.endDate}<br>
-      <strong>الوجبات المتبقية:</strong> دجاج:${sub.remaining.دجاج}, لحم:${sub.remaining.لحم}, سمك:${sub.remaining.سمك}, سناك:${sub.remaining.سناك}<br>
-      <strong>الحالة:</strong> ${status}</p><hr>
+    resultsDiv.innerHTML = `
+      <label>الاسم</label>
+      <input id="name" value="${sub.name}">
+      <label>الجوال</label>
+      <input id="phone" value="${sub.phone}">
+      <label>اسم الاشتراك</label>
+      <input id="subName" value="${sub.subName}">
+      <label>المدة بالأيام</label>
+      <input id="duration" type="number" value="${sub.duration}">
+      <label>تاريخ البداية</label>
+      <input id="startDate" type="date" value="${sub.startDate}">
+      <p><strong>الحالة الحالية:</strong> ${checkStatus(sub)}</p>
+      <button id="saveBtn">💾 حفظ التعديلات</button>
     `;
+
+    document.getElementById('saveBtn').onclick = async () => {
+      // تحديث بيانات العميل
+      sub.name = document.getElementById('name').value.trim() || sub.name;
+      sub.phone = document.getElementById('phone').value.trim() || sub.phone;
+      sub.subName = document.getElementById('subName').value.trim() || sub.subName;
+      sub.duration = parseInt(document.getElementById('duration').value) || sub.duration;
+      sub.startDate = document.getElementById('startDate').value || sub.startDate;
+      sub.endDate = new Date(new Date(sub.startDate).getTime() + sub.duration*DAY_MS)
+                      .toISOString().slice(0,10);
+
+      await saveSub(sub);
+      alert('✅ تم حفظ التعديلات');
+      document.getElementById('query').value = sub.id; // إعادة عرض العميل بعد التعديل
+      document.getElementById('searchBtn').click();
+    };
   });
 });
 </script>
 </body>
+</html>
+
+  });
+});
+</script>
+</body>
+
 </html>
