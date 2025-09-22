@@ -16,114 +16,62 @@ button { margin-top:12px; }
 <body>
 
 <h1>🔎 بحث وتعديل العملاء</h1>
-
 <label>ابحث بالـ ID أو الاسم</label>
 <input id="query" placeholder="ادخل ID أو الاسم">
 <button id="searchBtn">بحث</button>
-
 <div id="result">نتيجة البحث ستظهر هنا</div>
 <hr>
-<button onclick="location.href='import.html'">⬅ القائمة الرئيسية</button>
+<button onclick="location.href='index.html'">⬅ القائمة الرئيسية</button>
 
 <script>
-const DB='ClientsDB', STORE='clients';
-const DAY_MS=24*60*60*1000;
+const DB='ClientsDB', STORE='clients', DAY_MS=24*60*60*1000;
 
-// فتح DB
-function openDB() {
-  return new Promise((res, rej)=>{
-    const r = indexedDB.open(DB,1);
-    r.onupgradeneeded = e => { e.target.result.createObjectStore(STORE,{keyPath:'id'}); };
-    r.onsuccess = e => res(e.target.result);
-    r.onerror = e => rej(e.target.error);
-  });
-}
+function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB,1); r.onupgradeneeded=e=>e.target.result.createObjectStore(STORE,{keyPath:'id'}); r.onsuccess=e=>res(e.target.result); r.onerror=e=>rej(e.target.error); }); }
+function getAllClients(){ return openDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readonly'); const store=tx.objectStore(STORE); const req=store.getAll(); req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error); })); }
+function saveClient(c){ return openDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).put(c); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); })); }
 
-// جلب جميع العملاء
-function getAllSubs() {
-  return openDB().then(db => new Promise((res, rej)=>{
-    const tx = db.transaction(STORE,'readonly');
-    const store = tx.objectStore(STORE);
-    const req = store.getAll();
-    req.onsuccess = ()=>res(req.result);
-    req.onerror = ()=>rej(req.error);
-  }));
-}
-
-// حفظ العميل
-function saveClient(client) {
-  return openDB().then(db => new Promise((res, rej)=>{
-    const tx = db.transaction(STORE,'readwrite');
-    tx.objectStore(STORE).put(client);
-    tx.oncomplete = ()=>res();
-    tx.onerror = ()=>rej(tx.error);
-  }));
-}
-
-function checkStatus(sub){
-  const today = new Date();
-  const endDate = new Date(sub.endDate);
-  let reason='';
-  if(today > endDate) reason='انتهى الاشتراك بسبب مرور الأيام';
-  else {
-    const remainingMeals = Object.values(sub.remaining).reduce((a,b)=>a+b,0);
-    if(remainingMeals <= 0) reason='انتهى الاشتراك بسبب نفاد الوجبات';
-  }
-  return reason || 'ساري';
-}
-
-document.getElementById('searchBtn').addEventListener('click', async () => {
-  const q = document.getElementById('query').value.trim().toLowerCase();
-  const resultsDiv = document.getElementById('result');
-  resultsDiv.innerHTML='';
+document.getElementById('searchBtn').addEventListener('click',async()=>{
+  const q=document.getElementById('query').value.trim().toLowerCase();
+  const resultsDiv=document.getElementById('result'); resultsDiv.innerHTML='';
   if(!q){ alert('ادخل ID أو الاسم'); return; }
-
-  const subs = await getAllSubs();
-  const client = subs.find(s=>s.id.toLowerCase()===q || s.name.toLowerCase()===q);
-
+  const clients=await getAllClients();
+  const client=clients.find(c=>c.id.toLowerCase()===q||c.name.toLowerCase()===q);
   if(!client){ resultsDiv.innerHTML='<p>لم يتم العثور على العميل.</p>'; return; }
 
-  // نموذج قابل للتعديل
-  resultsDiv.innerHTML = `
-    <label>الاسم</label>
-    <input id="name" value="${client.name}">
-    <label>الجوال</label>
-    <input id="phone" value="${client.phone}">
-    <label>نوع الاشتراك</label>
-    <input id="subName" value="${client.subName}">
-    <label>تاريخ البداية</label>
-    <input id="startDate" type="date" value="${client.startDate}">
-    <label>المدة</label>
-    <input id="duration" type="number" value="${client.duration}">
-    <label>دجاج متبقي</label>
-    <input id="chicken" type="number" value="${client.remaining.دجاج}">
-    <label>لحم متبقي</label>
-    <input id="meat" type="number" value="${client.remaining.لحم}">
-    <label>سمك متبقي</label>
-    <input id="fish" type="number" value="${client.remaining.سمك}">
-    <label>سناك متبقي</label>
-    <input id="snack" type="number" value="${client.remaining.سناك}">
+  resultsDiv.innerHTML=`
+    <label>الاسم</label><input id="name" value="${client.name}">
+    <label>الجوال</label><input id="phone" value="${client.phone}">
+    <label>نوع الاشتراك</label><input id="subName" value="${client.subName}">
+    <label>تاريخ البداية</label><input id="startDate" type="date" value="${client.startDate}">
+    <label>المدة</label><input id="duration" type="number" value="${client.duration}">
+    <label>دجاج متبقي</label><input id="chicken" type="number" value="${client.remaining.دجاج}">
+    <label>لحم متبقي</label><input id="meat" type="number" value="${client.remaining.لحم}">
+    <label>سمك متبقي</label><input id="fish" type="number" value="${client.remaining.سمك}">
+    <label>سناك متبقي</label><input id="snack" type="number" value="${client.remaining.سناك}">
     <button id="saveBtn">💾 حفظ التعديلات</button>
     <p id="msg"></p>
   `;
 
-  document.getElementById('saveBtn').onclick = async ()=>{
-    client.name = document.getElementById('name').value.trim();
-    client.phone = document.getElementById('phone').value.trim();
-    client.subName = document.getElementById('subName').value.trim();
-    client.startDate = document.getElementById('startDate').value;
-    client.duration = parseInt(document.getElementById('duration').value) || client.duration;
-    client.endDate = new Date(new Date(client.startDate).getTime() + client.duration*DAY_MS)
-                      .toISOString().slice(0,10);
-    client.remaining.دجاج = parseInt(document.getElementById('chicken').value)||0;
-    client.remaining.لحم = parseInt(document.getElementById('meat').value)||0;
-    client.remaining.سمك = parseInt(document.getElementById('fish').value)||0;
-    client.remaining.سناك = parseInt(document.getElementById('snack').value)||0;
-
+  document.getElementById('saveBtn').onclick=async()=>{
+    client.name=document.getElementById('name').value.trim();
+    client.phone=document.getElementById('phone').value.trim();
+    client.subName=document.getElementById('subName').value.trim();
+    client.startDate=document.getElementById('startDate').value;
+    client.duration=parseInt(document.getElementById('duration').value)||client.duration;
+    client.endDate=new Date(new Date(client.startDate).getTime()+client.duration*DAY_MS).toISOString().slice(0,10);
+    client.remaining.دجاج=parseInt(document.getElementById('chicken').value)||0;
+    client.remaining.لحم=parseInt(document.getElementById('meat').value)||0;
+    client.remaining.سمك=parseInt(document.getElementById('fish').value)||0;
+    client.remaining.سناك=parseInt(document.getElementById('snack').value)||0;
     await saveClient(client);
     document.getElementById('msg').textContent='✅ تم حفظ التعديلات بنجاح';
   };
 });
+
+// إذا جاء رابط مع ?id=xxxx
+const params=new URLSearchParams(window.location.search);
+const idParam=params.get('id');
+if(idParam){ document.getElementById('query').value=idParam; document.getElementById('searchBtn').click(); }
 </script>
 </body>
 </html>
