@@ -1,147 +1,11 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📋 استيراد / تصدير العملاء</title>
-<style>
-body { font-family: sans-serif; padding: 20px; background:#f8f8f8; }
-input, button { padding:10px; font-size:16px; margin:5px 0; width:100%; box-sizing:border-box; }
-table { border-collapse: collapse; width: 100%; margin-top: 20px; background:#fff; }
-th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-th { background:#eee; }
-#msg { margin-top:10px; font-weight:bold; color:green; }
-</style>
-</head>
-<body>
-
-<h1>📋 استيراد / تصدير العملاء</h1>
-
-<h3>رفع ملف CSV</h3>
-<input type="file" id="csvFile" accept=".csv">
-<button onclick="importCSV()">📥 استيراد البيانات</button>
-
-<h3>تصدير CSV</h3>
-<button onclick="exportCSV()">⬇️ تصدير جميع البيانات</button>
-
-<p id="msg"></p>
-<hr>
-
-<h3>عرض العملاء المخزنين</h3>
-<table id="customersTable">
-<thead>
-<tr>
-<th>ID</th>
-<th>الاسم</th>
-<th>الجوال</th>
-<th>نوع الاشتراك</th>
-<th>المدة</th>
-<th>بداية الاشتراك</th>
-<th>نهاية الاشتراك</th>
-<th>إجمالي الوجبات</th>
-<th>دجاج</th>
-<th>لحم</th>
-<th>سمك</th>
-<th>سناك</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
-
-<script>
-const DB_NAME = 'ClientsDB';
-const STORE_NAME = 'clients';
-
-// فتح IndexedDB
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onupgradeneeded = e => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-      }
-    };
-    request.onsuccess = e => resolve(e.target.result);
-    request.onerror = e => reject(e.target.error);
-  });
-}
-
-// حفظ عميل
-function saveClient(client) {
-  return openDB().then(db => new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).put(client);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  }));
-}
-
-// جلب جميع العملاء
-function getAllClients() {
-  return openDB().then(db => new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  }));
-}
-
-// استيراد CSV
-function importCSV() {
-  const fileInput = document.getElementById('csvFile');
-  if (!fileInput.files.length) { alert("اختر ملف CSV أولاً"); return; }
-
-  const reader = new FileReader();
-  reader.onload = async e => {
-    const lines = e.target.result.trim().split("\n").map(r => r.split(","));
-    const DAY_MS = 24*60*60*1000;
-    let count = 0;
-
-    for (let i=1; i<lines.length; i++) {
-      if (!lines[i].join("").trim()) continue;
-      const [id,name,phone,subName,duration,startDate,totalAllowed,chicken,meat,fish,snack] = lines[i];
-      const dur = parseInt(duration)||0;
-      const start = startDate.trim();
-
-      const client = {
-        id: id.trim(),
-        name: name.trim(),
-        phone: phone.trim(),
-        subName: subName.trim(),
-        duration: dur,
-        startDate: start,
-        endDate: new Date(new Date(start).getTime()+dur*DAY_MS).toISOString().slice(0,10),
-        totalAllowed: parseInt(totalAllowed)||0,
-        consumed: {دجاج:0, لحم:0, سمك:0, سناك:0},
-        remaining: {
-          دجاج: parseInt(chicken)||0,
-          لحم: parseInt(meat)||0,
-          سمك: parseInt(fish)||0,
-          سناك: parseInt(snack)||0
-        },
-        createdAt: new Date().toISOString()
-      };
-
-      await saveClient(client);
-      count++;
-    }
-
-    document.getElementById('msg').textContent = `✅ تم استيراد ${count} عميل وحفظهم محلياً`;
-    loadFromDB();
-  };
-
-  reader.readAsText(fileInput.files[0]);
-}
-
-// عرض العملاء
+// عرض العملاء مع زر تعديل
 function loadFromDB() {
   getAllClients().then(clients => {
     const tbody = document.querySelector("#customersTable tbody");
     tbody.innerHTML = "";
     clients.forEach(c => {
       const tr = document.createElement("tr");
+
       [
         c.id, c.name, c.phone, c.subName, c.duration, c.startDate, c.endDate, c.totalAllowed,
         c.remaining.دجاج, c.remaining.لحم, c.remaining.سمك, c.remaining.سناك
@@ -150,33 +14,34 @@ function loadFromDB() {
         td.textContent = val;
         tr.appendChild(td);
       });
+
+      // عمود تعديل
+      const tdEdit = document.createElement("td");
+      const btnEdit = document.createElement("button");
+      btnEdit.textContent = "✏️ تعديل";
+      btnEdit.onclick = () => {
+        // تمرير ID العميل لصفحة search.html
+        location.href = `search.html?id=${encodeURIComponent(c.id)}`;
+      };
+      tdEdit.appendChild(btnEdit);
+      tr.appendChild(tdEdit);
+
       tbody.appendChild(tr);
     });
+
+    // تعديل رأس الجدول لإضافة العمود
+    const thead = document.querySelector("#customersTable thead tr");
+    if (!thead.querySelector(".editHeader")) {
+      const th = document.createElement("th");
+      th.textContent = "تعديل";
+      th.className = "editHeader";
+      thead.appendChild(th);
+    }
   });
 }
 
-// تصدير CSV
-function exportCSV() {
-  getAllClients().then(clients => {
-    if (!clients.length) { alert("لا يوجد بيانات للتصدير"); return; }
-    let csv = "id,name,phone,subName,duration,startDate,endDate,totalAllowed,chicken,meat,fish,snack\n";
-    clients.forEach(c => {
-      csv += [
-        c.id, c.name, c.phone, c.subName, c.duration, c.startDate, c.endDate, c.totalAllowed,
-        c.remaining.دجاج, c.remaining.لحم, c.remaining.سمك, c.remaining.سناك
-      ].join(",") + "\n";
-    });
-    const blob = new Blob([csv], {type:'text/csv'});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "clients.csv";
-    a.click();
-    URL.revokeObjectURL(a.href);
-  });
-}
-
-// عرض تلقائي عند فتح الصفحة
 loadFromDB();
 </script>
 </body>
 </html>
+
