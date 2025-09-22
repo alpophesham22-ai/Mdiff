@@ -1,61 +1,80 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8">
-  <title>اصنع</title>
-
-  <!-- Firebase SDKs -->
-  <script type="module">
-    // استيراد مكتبات Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
-    import { getFirestore, doc, setDoc, getDoc } 
-      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-    // إعدادات مشروعك في Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyAjcqetH5vq7fZSV4vwPib-MIoHt4qrVBk",
-      authDomain: "make-difference.firebaseapp.com",
-      projectId: "make-difference",
-      storageBucket: "make-difference.appspot.com",
-      messagingSenderId: "114117498973",
-      appId: "1:114117498973:web:87567e7a3a181c88e4d5b4",
-      measurementId: "G-YWWMPR5NTY"
-    };
-
-    // تهيئة Firebase
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    const db = getFirestore(app);
-
-    // مثال: إضافة بيانات إلى Firestore
-    async function testFirestore() {
-      await setDoc(doc(db, "testCollection", "firstDoc"), {
-        name: "Mohab",
-        createdAt: new Date().toISOString()
-      });
-
-      const snap = await getDoc(doc(db, "testCollection", "firstDoc"));
-      console.log("Data from Firestore:", snap.data());
-    }
-
-    // نفذ الاختبار
-    testFirestore();
-
-    // إعادة التوجيه بعد التهيئة
-    window.location.href = "menu.html";
-  </script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>📋 القائمة الرئيسية</title>
+<style>
+body { font-family: sans-serif; margin:20px; }
+button { width:100%; padding:10px; margin:5px 0; font-size:16px; }
+.client { border:1px solid #ccc; padding:10px; margin:10px 0; border-radius:6px; }
+.client-buttons { display:flex; gap:6px; margin-top:6px; }
+.client-buttons button { flex:1; padding:6px; font-size:14px; }
+</style>
 </head>
 <body>
-  <script>
-    // تسجيل Service Worker للـ PWA
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/js/sw.js')
-          .then(reg => console.log('Service Worker registered'))
-          .catch(err => console.log('Service Worker failed:', err));
-      });
-    }
-  </script>
+
+<h1>📋 القائمة الرئيسية</h1>
+<button onclick="location.href='add.html'">➕ إضافة عميل</button>
+<button onclick="location.href='import.html'">⬆️ استيراد / ⬇️ تصدير بيانات</button>
+<button onclick="location.href='search.html'">🔎 بحث وتعديل العملاء</button>
+
+<h2>👥 العملاء المسجلون</h2>
+<div id="clients">جاري تحميل البيانات...</div>
+
+<script>
+const DB_NAME = 'ClientsDB', STORE_NAME='clients';
+
+function openDB() {
+  return new Promise((resolve,reject)=>{
+    const r = indexedDB.open(DB_NAME,1);
+    r.onupgradeneeded = e => { e.target.result.createObjectStore(STORE_NAME,{keyPath:'id'}); };
+    r.onsuccess = e => resolve(e.target.result);
+    r.onerror = e => reject(e.target.error);
+  });
+}
+
+function getAllClients() {
+  return openDB().then(db => new Promise((res,rej)=>{
+    const tx = db.transaction(STORE_NAME,'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
+    req.onsuccess = ()=>res(req.result);
+    req.onerror = ()=>rej(req.error);
+  }));
+}
+
+function loadClients() {
+  getAllClients().then(clients=>{
+    const container = document.getElementById('clients');
+    container.innerHTML = '';
+    if(clients.length===0){ container.textContent='لا يوجد عملاء مسجلون.'; return; }
+
+    clients.forEach(c=>{
+      const div = document.createElement('div');
+      div.className = 'client';
+      div.innerHTML = `
+        <strong>${c.name}</strong><br>
+        ☎️ ${c.phone}<br>
+        🆔 ${c.id}<br>
+        🥗 اشتراك: ${c.subName || "-"}<br>
+        📅 من ${c.startDate} إلى ${c.endDate}
+      `;
+      const btns = document.createElement('div');
+      btns.className='client-buttons';
+
+      const editBtn = document.createElement('button');
+      editBtn.textContent='✏️ تعديل';
+      editBtn.onclick = ()=> location.href=`search.html?id=${c.id}`;
+
+      btns.appendChild(editBtn);
+      div.appendChild(btns);
+      container.appendChild(div);
+    });
+  });
+}
+
+loadClients();
+</script>
 </body>
 </html>
